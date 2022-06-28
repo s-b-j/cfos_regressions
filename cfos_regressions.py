@@ -4,6 +4,7 @@ from allensdk.core.mouse_connectivity_cache import MouseConnectivityCache
 from allensdk.core.reference_space_cache import ReferenceSpaceCache
 import pandas as pd
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
@@ -26,7 +27,8 @@ def get_atlas_data():
     rsp = rspc.get_reference_space()
     # all_experiments = mcc.get_experiments(dataframe=True)
     structure_tree = mcc.get_structure_tree()
-    return mcc, rsp, structure_tree
+    name_map = structure_tree.get_name_map()
+    return mcc, rsp, structure_tree, name_map
 
 
 def get_cfos_data(cfos_path):
@@ -34,7 +36,7 @@ def get_cfos_data(cfos_path):
     return cfos
 
 
-def get_pl_projections(structure_tree, mcc):
+def get_pl_proj(structure_tree, mcc):
     pl = structure_tree.get_structures_by_acronym(['PL'])[0]
     pl_experiment = mcc.get_experiments(
         cre=False,
@@ -52,14 +54,26 @@ def get_pl_projections(structure_tree, mcc):
     return proj
 
 
-def set_structure_names(structure_tree, proj)
+def set_structure_names(structure_tree, proj):
     structure_names = pd.DataFrame(structure_tree.nodes(proj.structure_id)).reset_index()
     proj["name"] = structure_names.name
     proj["acronym"] = structure_names.acronym
     hemi_dict = {1: "right ", 2:"left "} # this is flipped relative to the true mappings. This is because our mice have left side injections and the Allen Atlas data is for right side
     name_LR = [hemi_dict[i] for i in proj["hemisphere_id"]] + proj["name"]
     proj["name"] = name_LR
-    return proj_named
+    return proj
+
+
+def check_for_data(path, last_column):
+    combined_exists = os.path.exists(path)
+    if combined_exists:
+        combined_head = pd.read_csv(path, index_col=0, nrows=0).columns.tolist()
+        if last_column in combined_head:
+            return True
+        else:
+            return False
+    else:
+        return False
 
 
 def combine_cfos_and_projections(cfos, proj):
@@ -107,22 +121,6 @@ def append_statistics(combined, combined_path):
     return combined
 
 
-def check_for_data(path, last_column):
-    combined_exists = os.path.exists(path)
-    if combined_exists:
-        combined_head = pd.read_csv(path, index_col=0, nrows=0).columns.tolist()
-        if last_column in combined_head:
-            return True
-        else:
-            return False
-    else:
-        return False
-
-check_for_data(combined_path, "P_val_corrected")
-#combined = pd.read_csv(combined_path)
-# signif_names = combined.name[(combined["p_val_corrected"]<0.05)]
-
-
 def plot_pvals(combined):
     plt.plot(combined["p_val"])
     plt.plot(combined["p_val_corrected"])
@@ -133,10 +131,14 @@ def restrict_to_pl_proj(combined):
     combined_pl_proj = combined[(combined["projection_density"] > 0)]
     combined_pl_proj = combined_pl_proj[(combined_pl_proj["projection_intensity"] > 0)]
     combined_pl_proj = combined_pl_proj[(combined_pl_proj["projection_energy"] > 0)]
-    combined_pl_proj["pd_log"] = np.log(combined_pl_proj["projection_density"]+0.0000001)
-    combined_pl_proj["pe_log"] = np.log(combined_pl_proj["projection_energy"]+0.0000001)
-    combined_pl_proj["pi_log"] = np.log(combined_pl_proj["projection_intensity"]+0.0000001)
     return combined_pl_proj
+
+
+def log_transform(combined):
+    combined["pd_log"] = np.log(combined_pl_proj["projection_density"]+0.0000001)
+    combined["pe_log"] = np.log(combined_pl_proj["projection_energy"]+0.0000001)
+    combined["pi_log"] = np.log(combined_pl_proj["projection_intensity"]+0.0000001)
+    return combined
 
 
 # combined_pl_proj_exists = check_for_data(combined_pl_proj_path, "pi_log")
@@ -144,36 +146,42 @@ def restrict_to_pl_proj(combined):
 # combined_pl_proj.to_csv(combined_pl_proj_path)
 # structures - lifecanvas
 
-def get_life_canvas_data(region_list_path, anno25_path)
+def get_life_canvas_data(region_list_path, anno25_path):
     region_list = pd.read_csv(region_list_path)
-    parent_child_dict = region_list.set_index("parent_structure_id")["id"].to_dict()
+    # parent_child_dict = region_list.set_index("parent_structure_id")["id"].to_dict()
     child_parent_dict = region_list.set_index("id")["parent_structure_id"].to_dict()
-    region_list["grandparent_structure_id"] = region_list.parent_structure_id.map(child_parent_dict).fillna(-1).astype(int)
+    region_list["g_parent_structure_id"] = region_list.parent_structure_id.map(child_parent_dict).fillna(-1).astype(int)
+    region_list["g_g_parent_structure_id"] = region_list.g_parent_structure_id.map(child_parent_dict).fillna(-1).astype(int)
+    region_list["g_g_g_parent_structure_id"] = region_list.g_g_parent_structure_id.map(child_parent_dict).fillna(-1).astype(int)
+    anno25 = tf.imread(anno25_path)
+    return region_list, anno25
 
 
+def get_centroids(proj, rsp, name_map):
+    proj["centroid_x"] = ""
+    proj["centroid_y"] = ""
+    proj["centroid_z"] = ""
+    for i, id in enumerate(proj["structure_id"]):
+        mask = rsp.make_structure_mask([id])
+        # print(f"Structure = {name_map[id]}.")
+        centroid = [np.mean(x_value) for x_value in np.where(mask)]
+        # proj["centroid_x"] = centroid[0]
+        # proj["centroid_y"] = centroid[1]
+        # proj["centroid_z"] = centroid[2]
+    return proj
 
-# region_list["x_loc"] = ""
-# region_list["y_loc"] = ""
-# region_list["z_loc"] = ""
-# anno25 = tf.imread(anno25_path)
 
-# anno25_unique = np.unique(anno25)
-
-# for i, id in enumerate(region_list["id"]):
-#     anno_thresh = anno25==id
-#     print(np.max(anno_thresh))
-#     region_list["x_loc"].iloc[i] = np.mean(np.where(anno_thresh)[0])
-#     region_list["y_loc"].iloc[i] = np.mean(np.where(anno_thresh)[1])
-#     region_list["z_loc"].iloc[i] = np.mean(np.where(anno_thresh)[2])
-
-structure_unionizes["centroid_x"] = ""
-structure_unionizes["centroid_y"] = ""
-structure_unionizes["centroid_z"] = ""
-
-for i, id in enumerate(structure_unionizes["structure_id"]):
-    print(id)
-    mask = rsp.make_structure_mask([id])
-    # centroid = [np.mean(x_value) for x_value in np.where(mask)]
-    # structure_unionizes["centroid_x"] = centroid[0]
-    # structure_unionizes["centroid_y"] = centroid[1]
-    # structure_unionizes["centroid_z"] = centroid[2]
+def main():
+    mcc, rsp, structure_tree, name_map = get_atlas_data()
+    cfos = get_cfos_data(cfos_path)
+    proj = get_pl_proj(structure_tree, mcc)
+    proj = set_structure_names(structure_tree, proj)
+    if check_for_data(combined_path, "p_val_corrected"):
+        combined = pd.read_csv(combined_path)
+    else:
+        combined = combine_cfos_and_projections(cfos, proj)
+        combined = append_statistics(combined, combined_path)
+    combined_pl_proj = restrict_to_pl_proj(combined)
+    combined_pl_proj = log_transform(combined_pl_proj)
+    region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
+    proj = get_centroids(proj, rsp)
