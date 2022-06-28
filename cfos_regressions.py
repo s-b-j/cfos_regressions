@@ -19,6 +19,7 @@ region_list_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\
 anno25_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\20220119_16_47_57_SJ0612_destriped_DONE\annotation_25_full_transverse_LR.tiff"
 pl_proj_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined_plProj_withCentroids.csv"
 
+
 def get_atlas_data():
     mcc = MouseConnectivityCache(manifest_file='connectivity/mouse_connectivity_manifest.json')
     reference_space_key = 'annotation/ccf_2017'
@@ -61,6 +62,7 @@ def set_structure_names(structure_tree, proj):
     hemi_dict = {1: "right ", 2:"left "} # this is flipped relative to the true mappings. This is because our mice have left side injections and the Allen Atlas data is for right side
     name_LR = [hemi_dict[i] for i in proj["hemisphere_id"]] + proj["name"]
     proj["name"] = name_LR
+    proj["hemi_LR"] = [hemi_dict[i] for i in proj["hemisphere_id"]]
     return proj
 
 
@@ -91,17 +93,21 @@ def append_statistics(combined, combined_path):
     p_vals = []
     for row in combined.iterrows():
         t_stat, p_val = ttest_ind(
-            [row[1].ChR2_SJ0619,
-            row[1].ChR2_SJ0602,
-            row[1].ChR2_SJ0603,
-            row[1].ChR2_SJ0605,
-            row[1].ChR2_SJ0612],
-            [row[1].YFP_SJ0601,
-            row[1].YFP_SJ0604,
-            row[1].YFP_SJ0606,
-            row[1].YFP_SJ0610,
-            row[1].YFP_SJ0613,
-            row[1].YFP_SJ0615],
+            [
+                row[1].ChR2_SJ0619,
+                row[1].ChR2_SJ0602,
+                row[1].ChR2_SJ0603,
+                row[1].ChR2_SJ0605,
+                row[1].ChR2_SJ0612
+                ],
+            [
+                row[1].YFP_SJ0601,
+                row[1].YFP_SJ0604,
+                row[1].YFP_SJ0606,
+                row[1].YFP_SJ0610,
+                row[1].YFP_SJ0613,
+                row[1].YFP_SJ0615
+                ],
             axis=0,
             equal_var=True,
             nan_policy='propagate',
@@ -141,11 +147,6 @@ def log_transform(proj):
     return combined
 
 
-# combined_pl_proj_exists = check_for_data(combined_pl_proj_path, "pi_log")
-# if not combined_pl_proj_exists:
-# combined_pl_proj.to_csv(combined_pl_proj_path)
-# structures - lifecanvas
-
 def get_life_canvas_data(region_list_path, anno25_path):
     region_list = pd.read_csv(region_list_path)
     # parent_child_dict = region_list.set_index("parent_structure_id")["id"].to_dict()
@@ -165,23 +166,42 @@ def get_centroids(proj, rsp, name_map):
     for row in proj.iterrows():
         i = row[0]
         id = row[1].structure_id
-        print(row[1].structure_name)
-        # mask = rsp.make_structure_mask([id])
-        # side_left = ("left" in row[1].structure_name)
-        # if side_left:
-        #     mask_left = mask[:, :, 228:456]
-        #     centroid_left = [np.mean(x_value) for x_value in np.where(mask_left)]
-        #     proj["centroid_x"].iloc[i] = centroid_left[0]
-        #     proj["centroid_y"].iloc[i] = centroid_left[1]
-        #     proj["centroid_z"].iloc[i] = centroid_left[2]
-        # else:
-        #     mask_right = mask[:, :, 0:228]
-        #     centroid_right = [np.mean(x_value) for x_value in np.where(mask_right)]
-        #     proj["centroid_x"].iloc[i] = centroid_right[0]
-        #     proj["centroid_y"].iloc[i] = centroid_right[1]
-        #     proj["centroid_z"].iloc[i] = centroid_right[2]
-        # print(f"{np.round(((i+1)/proj.shape[0])*100,2)}% done")
+        hemi = row[1].hemi_LR
+        mask = rsp.make_structure_mask([id])
+        side_left = hemi == "left"
+        if side_left:
+            mask_left = mask[:, :, 228:456]
+            centroid_left = [np.mean(x_value) for x_value in np.where(mask_left)]
+            proj["centroid_x"].iloc[i] = centroid_left[0]
+            proj["centroid_y"].iloc[i] = centroid_left[1]
+            proj["centroid_z"].iloc[i] = centroid_left[2]
+        else:
+            mask_right = mask[:, :, 0:228]
+            centroid_right = [np.mean(x_value) for x_value in np.where(mask_right)]
+            proj["centroid_x"].iloc[i] = centroid_right[0]
+            proj["centroid_y"].iloc[i] = centroid_right[1]
+            proj["centroid_z"].iloc[i] = centroid_right[2]
+        print(f"{np.round(((i+1)/proj.shape[0])*100,2)}% done")
     return proj
+
+
+# function to get expression data?
+def get_expression_data():
+    df = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density.csv")
+    return df
+
+
+def get_dist_to_pl(pl_proj):
+    pl_x = pl_proj["centroid_x"][pl_proj["name"] == 'left Prelimbic area']
+    pl_y = pl_proj["centroid_y"][pl_proj["name"] == 'left Prelimbic area']
+    pl_z = pl_proj["centroid_z"][pl_proj["name"] == 'left Prelimbic area']
+    pl_proj["dist_to_pl"] = ""
+    for row in pl_proj.iterrows():
+        i = row[0]
+        pl_proj["dist_to_pl"].iloc[i] = np.sqrt(
+                ((row[1].centroid_x - pl_x)**2 + (row[1].centroid_y - pl_y)**2 + (row[1].centroid_z - pl_z)**2)
+        )
+    return pl_proj
 
 
 def main():
@@ -198,4 +218,6 @@ def main():
     pl_proj = log_transform(pl_proj)
     # region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
     pl_proj = get_centroids(pl_proj, rsp, name_map)
+    pl_proj = get_dist_to_pl(pl_proj)
     pl_proj.to_csv(pl_proj_path)
+
