@@ -11,6 +11,7 @@ import warnings
 from scipy.stats import ttest_ind
 from statsmodels.stats import multitest
 import tifffile as tf
+from sklearn.cross_decomposition import PLSRegression
 warnings.filterwarnings('ignore')
 cfos_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\Cohort6_cfos_6_22_21_combined_results - all_density_excl.csv"
 combined_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined.csv"
@@ -18,6 +19,8 @@ combined_pl_proj_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projec
 region_list_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\20220119_16_47_57_SJ0612_destriped_DONE\full_brain_regions_LR.csv"
 anno25_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\20220119_16_47_57_SJ0612_destriped_DONE\annotation_25_full_transverse_LR.tiff"
 pl_proj_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined_plProj_withCentroids.csv"
+exp_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density.csv"
+exp_rep_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density_rep.csv"
 
 
 def get_atlas_data():
@@ -187,11 +190,17 @@ def get_centroids(proj, rsp, name_map):
 
 # function to get expression data?
 def get_expression_data():
-    exp = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density.csv")
+    exp = pd.read_csv(exp_path)
     exp = exp.groupby(["gene_id", "acronym"]).agg({"expression_density": "mean"}).reset_index()
     exp["ed_dm_scale"] = (exp["expression_density"] - np.mean(exp["expression_density"]))/np.std(exp["expression_density"])
     exp = exp.pivot(index="acronym", columns="gene_id", values="ed_dm_scale")
-    return exp
+    exp_idx = exp.index
+    exp_idx_rep = np.repeat(exp_idx, 2) + np.tile(["-L","-R"], exp.shape[0])
+    exp_col = exp.columns
+    exp_rep = pd.DataFrame(np.repeat(exp.values,2,axis=0))
+    exp_rep.index = exp_idx_rep
+    exp_rep.columns = exp_col
+    return exp_rep
 
 
 def get_dist_to_pl(pl_proj):
@@ -219,7 +228,13 @@ for i in np.arange(bootstrap_count):
     perm_mat_rand[:,i] = np.random.permutation(temp_range)
 
 # null model using random permutation of rows
-for i in np.arange(bootstrap_count)
+for i in np.arange(bootstrap_count):
+    idx= perm_mat_rand[:,i]
+    X = 
+    pls_mdl = PLSRegression(n_components=1, scale=False)
+    pls_mdl.fit()
+
+
 
 
 def main():
