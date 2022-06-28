@@ -17,7 +17,7 @@ combined_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_a
 combined_pl_proj_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined_plProj.csv"
 region_list_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\20220119_16_47_57_SJ0612_destriped_DONE\full_brain_regions_LR.csv"
 anno25_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\20220119_16_47_57_SJ0612_destriped_DONE\annotation_25_full_transverse_LR.tiff"
-
+pl_proj_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined_plProj_withCentroids.csv"
 
 def get_atlas_data():
     mcc = MouseConnectivityCache(manifest_file='connectivity/mouse_connectivity_manifest.json')
@@ -158,26 +158,29 @@ def get_life_canvas_data(region_list_path, anno25_path):
 
 
 def get_centroids(proj, rsp, name_map):
-    proj["centroid_left_x"].iloc[i] = ""
-    proj["centroid_left_y"].iloc[i] = ""
-    proj["centroid_left_z"].iloc[i] = ""
-    proj["centroid_right_x"].iloc[i] = ""
-    proj["centroid_right_y"].iloc[i] = ""
-    proj["centroid_right_z"].iloc[i] = ""
+    proj["centroid_x"] = ""
+    proj["centroid_y"] = ""
+    proj["centroid_z"] = ""
     print("Finding centroids")
-    for i, id in enumerate(proj["structure_id"].iloc[0:2]):
-        mask = rsp.make_structure_mask([id])
-        mask_left = mask[:,:,228:456]
-        mask_right = mask[:,:,0:228]
-        centroid_left = [np.mean(x_value) for x_value in np.where(mask_left)]
-        centroid_right = [np.mean(x_value) for x_value in np.where(mask_right)]
-        proj["centroid_left_x"].iloc[i] = centroid_left[0]
-        proj["centroid_left_y"].iloc[i] = centroid_left[1]
-        proj["centroid_left_z"].iloc[i] = centroid_left[2]
-        proj["centroid_right_x"].iloc[i] = centroid_right[0]
-        proj["centroid_right_y"].iloc[i] = centroid_right[1]
-        proj["centroid_right_z"].iloc[i] = centroid_right[2]
-        print(f"{np.round(((i+1)/proj.shape[0])*100,2)}% done")
+    for row in proj.iterrows():
+        i = row[0]
+        id = row[1].structure_id
+        print(row[1].structure_name)
+        # mask = rsp.make_structure_mask([id])
+        # side_left = ("left" in row[1].structure_name)
+        # if side_left:
+        #     mask_left = mask[:, :, 228:456]
+        #     centroid_left = [np.mean(x_value) for x_value in np.where(mask_left)]
+        #     proj["centroid_x"].iloc[i] = centroid_left[0]
+        #     proj["centroid_y"].iloc[i] = centroid_left[1]
+        #     proj["centroid_z"].iloc[i] = centroid_left[2]
+        # else:
+        #     mask_right = mask[:, :, 0:228]
+        #     centroid_right = [np.mean(x_value) for x_value in np.where(mask_right)]
+        #     proj["centroid_x"].iloc[i] = centroid_right[0]
+        #     proj["centroid_y"].iloc[i] = centroid_right[1]
+        #     proj["centroid_z"].iloc[i] = centroid_right[2]
+        # print(f"{np.round(((i+1)/proj.shape[0])*100,2)}% done")
     return proj
 
 
@@ -193,6 +196,6 @@ def main():
         combined = append_statistics(combined, combined_path)
     pl_proj = restrict_to_pl_proj(combined)
     pl_proj = log_transform(pl_proj)
-    region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
+    # region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
     pl_proj = get_centroids(pl_proj, rsp, name_map)
-
+    pl_proj.to_csv(pl_proj_path)
