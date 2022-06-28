@@ -143,11 +143,13 @@ def restrict_to_pl_proj(combined):
 # if not combined_pl_proj_exists:
 # combined_pl_proj.to_csv(combined_pl_proj_path)
 # structures - lifecanvas
+
 def get_life_canvas_data(region_list_path, anno25_path)
     region_list = pd.read_csv(region_list_path)
     parent_child_dict = region_list.set_index("parent_structure_id")["id"].to_dict()
     child_parent_dict = region_list.set_index("id")["parent_structure_id"].to_dict()
     region_list["grandparent_structure_id"] = region_list.parent_structure_id.map(child_parent_dict).fillna(-1).astype(int)
+
 
 
 # region_list["x_loc"] = ""
