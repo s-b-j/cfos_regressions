@@ -187,21 +187,39 @@ def get_centroids(proj, rsp, name_map):
 
 # function to get expression data?
 def get_expression_data():
-    df = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density.csv")
-    return df
+    exp = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density.csv")
+    exp = exp.groupby(["gene_id", "acronym"]).agg({"expression_density": "mean"}).reset_index()
+    exp["ed_dm_scale"] = (exp["expression_density"] - np.mean(exp["expression_density"]))/np.std(exp["expression_density"])
+    exp = exp.pivot(index="acronym", columns="gene_id", values="ed_dm_scale")
+    return exp
 
 
 def get_dist_to_pl(pl_proj):
-    pl_x = pl_proj["centroid_x"][pl_proj["name"] == 'left Prelimbic area']
-    pl_y = pl_proj["centroid_y"][pl_proj["name"] == 'left Prelimbic area']
-    pl_z = pl_proj["centroid_z"][pl_proj["name"] == 'left Prelimbic area']
+    pl_x = pl_proj["centroid_x"][pl_proj["name"] == 'left Prelimbic area'].values[0]
+    pl_y = pl_proj["centroid_y"][pl_proj["name"] == 'left Prelimbic area'].values[0]
+    pl_z = pl_proj["centroid_z"][pl_proj["name"] == 'left Prelimbic area'].values[0]
     pl_proj["dist_to_pl"] = ""
     for row in pl_proj.iterrows():
         i = row[0]
         pl_proj["dist_to_pl"].iloc[i] = np.sqrt(
-                ((row[1].centroid_x - pl_x)**2 + (row[1].centroid_y - pl_y)**2 + (row[1].centroid_z - pl_z)**2)
+                (
+                    (row[1].centroid_x - pl_x)**2 + (row[1].centroid_y - pl_y)**2 + (row[1].centroid_z - pl_z)**2
+                    )
         )
     return pl_proj
+
+
+# Plan: generate random permutation matrix.
+# Alex creates a range of values to permute over.
+# The values range over the number of data rows in the expression matrix
+bootstrap_count = 10000
+temp_range = exp.shape[0]
+perm_mat_rand = np.zeros((exp.shape[0],bootstrap_count))
+for i in np.arange(bootstrap_count):
+    perm_mat_rand[:,i] = np.random.permutation(temp_range)
+
+# null model using random permutation of rows
+for i in np.arange(bootstrap_count)
 
 
 def main():
