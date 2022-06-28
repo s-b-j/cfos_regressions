@@ -134,10 +134,10 @@ def restrict_to_pl_proj(combined):
     return combined_pl_proj
 
 
-def log_transform(combined):
-    combined["pd_log"] = np.log(combined_pl_proj["projection_density"]+0.0000001)
-    combined["pe_log"] = np.log(combined_pl_proj["projection_energy"]+0.0000001)
-    combined["pi_log"] = np.log(combined_pl_proj["projection_intensity"]+0.0000001)
+def log_transform(proj):
+    proj["pd_log"] = np.log(proj["projection_density"]+0.0000001)
+    proj["pe_log"] = np.log(proj["projection_energy"]+0.0000001)
+    proj["pi_log"] = np.log(proj["projection_intensity"]+0.0000001)
     return combined
 
 
@@ -158,16 +158,26 @@ def get_life_canvas_data(region_list_path, anno25_path):
 
 
 def get_centroids(proj, rsp, name_map):
-    proj["centroid_x"] = ""
-    proj["centroid_y"] = ""
-    proj["centroid_z"] = ""
-    for i, id in enumerate(proj["structure_id"]):
+    proj["centroid_left_x"].iloc[i] = ""
+    proj["centroid_left_y"].iloc[i] = ""
+    proj["centroid_left_z"].iloc[i] = ""
+    proj["centroid_right_x"].iloc[i] = ""
+    proj["centroid_right_y"].iloc[i] = ""
+    proj["centroid_right_z"].iloc[i] = ""
+    print("Finding centroids")
+    for i, id in enumerate(proj["structure_id"].iloc[0:2]):
         mask = rsp.make_structure_mask([id])
-        # print(f"Structure = {name_map[id]}.")
-        centroid = [np.mean(x_value) for x_value in np.where(mask)]
-        # proj["centroid_x"] = centroid[0]
-        # proj["centroid_y"] = centroid[1]
-        # proj["centroid_z"] = centroid[2]
+        mask_left = mask[:,:,228:456]
+        mask_right = mask[:,:,0:228]
+        centroid_left = [np.mean(x_value) for x_value in np.where(mask_left)]
+        centroid_right = [np.mean(x_value) for x_value in np.where(mask_right)]
+        proj["centroid_left_x"].iloc[i] = centroid_left[0]
+        proj["centroid_left_y"].iloc[i] = centroid_left[1]
+        proj["centroid_left_z"].iloc[i] = centroid_left[2]
+        proj["centroid_right_x"].iloc[i] = centroid_right[0]
+        proj["centroid_right_y"].iloc[i] = centroid_right[1]
+        proj["centroid_right_z"].iloc[i] = centroid_right[2]
+        print(f"{np.round(((i+1)/proj.shape[0])*100,2)}% done")
     return proj
 
 
@@ -181,7 +191,8 @@ def main():
     else:
         combined = combine_cfos_and_projections(cfos, proj)
         combined = append_statistics(combined, combined_path)
-    combined_pl_proj = restrict_to_pl_proj(combined)
-    combined_pl_proj = log_transform(combined_pl_proj)
+    pl_proj = restrict_to_pl_proj(combined)
+    pl_proj = log_transform(pl_proj)
     region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
-    proj = get_centroids(proj, rsp)
+    pl_proj = get_centroids(pl_proj, rsp, name_map)
+
