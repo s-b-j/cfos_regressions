@@ -12,6 +12,7 @@ from scipy.stats import ttest_ind
 from statsmodels.stats import multitest
 import tifffile as tf
 from sklearn.cross_decomposition import PLSRegression
+from tqdm import tqdm
 warnings.filterwarnings('ignore')
 cfos_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\Cohort6_cfos_6_22_21_combined_results - all_density_excl.csv"
 combined_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined.csv"
@@ -21,7 +22,8 @@ anno25_path = r"\\PC300694.med.cornell.edu\homes\SmartSPIM_Data\2022_01_19\20220
 pl_proj_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\get_atlas_proj_density\data\cfos_projection_combined_plProj_withCentroids.csv"
 exp_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density.csv"
 exp_rep_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression_density_rep.csv"
-
+expr_for_r_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expression_for_r.csv"
+cfos_for_r_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\cfos_for_r.csv"
 
 def get_atlas_data():
     mcc = MouseConnectivityCache(manifest_file='connectivity/mouse_connectivity_manifest.json')
@@ -166,7 +168,7 @@ def get_centroids(proj, rsp, name_map):
     proj["centroid_y"] = ""
     proj["centroid_z"] = ""
     print("Finding centroids")
-    for row in proj.iterrows():
+    for row in tqdm(proj.iterrows()):
         i = row[0]
         id = row[1].structure_id
         hemi = row[1].hemi_LR
@@ -174,13 +176,13 @@ def get_centroids(proj, rsp, name_map):
         side_left = hemi == "left"
         if side_left:
             mask_left = mask[:, :, 228:456]
-            centroid_left = [np.mean(x_value) for x_value in np.where(mask_left)]
+            centroid_left = [np.nanmean(x_value) for x_value in np.where(mask_left)]
             proj["centroid_x"].iloc[i] = centroid_left[0]
             proj["centroid_y"].iloc[i] = centroid_left[1]
             proj["centroid_z"].iloc[i] = centroid_left[2]
         else:
             mask_right = mask[:, :, 0:228]
-            centroid_right = [np.mean(x_value) for x_value in np.where(mask_right)]
+            centroid_right = [np.nanmean(x_value) for x_value in np.where(mask_right)]
             proj["centroid_x"].iloc[i] = centroid_right[0]
             proj["centroid_y"].iloc[i] = centroid_right[1]
             proj["centroid_z"].iloc[i] = centroid_right[2]
@@ -189,10 +191,11 @@ def get_centroids(proj, rsp, name_map):
 
 
 # function to get expression data?
-def get_expression_data():
+def get_expression_data(exp_path):
     exp = pd.read_csv(exp_path)
-    exp = exp.groupby(["gene_id", "acronym"]).agg({"expression_density": "mean"}).reset_index()
-    exp["ed_dm_scale"] = (exp["expression_density"] - np.mean(exp["expression_density"]))/np.std(exp["expression_density"])
+    exp = exp.groupby(["gene_id", "acronym"]).agg({"expression_density": lambda x: np.nanmean(x)}).reset_index()
+    exp["ed_dm_scale"] = (exp["expression_density"] - np.nanmean(exp["expression_density"]))
+    exp["ed_dm_scale"] = exp["ed_dm_scale"]/np.std(exp["ed_dm_scale"])
     exp = exp.pivot(index="acronym", columns="gene_id", values="ed_dm_scale")
     exp_idx = exp.index
     exp_idx_rep = np.repeat(exp_idx, 2) + np.tile(["-L","-R"], exp.shape[0])
@@ -237,6 +240,7 @@ def match_cfos_to_exp(pl_proj, exp):
 # Plan: generate random permutation matrix.
 # Alex creates a range of values to permute over.
 # The values range over the number of data rows in the expression matrix
+
 bootstrap_count = 10000
 temp_range = exp.shape[0]
 perm_mat_rand = np.zeros((exp.shape[0],bootstrap_count))
@@ -273,5 +277,10 @@ def main():
     pl_proj = get_centroids(pl_proj, rsp, name_map)
     pl_proj = get_dist_to_pl(pl_proj)
     pl_proj.to_csv(pl_proj_path)
+    exp = get_expression_data
     pl_proj_sub, exp_sub, cfos_lost_regions, expr_lost_regions = match_cfos_to_exp(pl_proj, exp) # why are we missing so many regions (~400)
+    # save pl_proj_sub and exp_sub to folder for import to R
+    # do the bootstrapping in R?
+    pl_proj_sub.to_csv(cfos_for_r_path)
+    exp_sub.to_csv(expr_for_r_path)
     
