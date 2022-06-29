@@ -191,19 +191,29 @@ def get_centroids(proj, rsp, name_map):
 
 
 # function to get expression data?
-def get_expression_data(exp_path):
+def get_expression_data(exp_path, keep_all_genes):
     exp = pd.read_csv(exp_path)
     exp = exp.groupby(["gene_id", "acronym"]).agg({"expression_density": lambda x: np.nanmean(x)}).reset_index()
     exp["ed_dm_scale"] = (exp["expression_density"] - np.nanmean(exp["expression_density"]))
     exp["ed_dm_scale"] = exp["ed_dm_scale"]/np.std(exp["ed_dm_scale"])
     exp = exp.pivot(index="acronym", columns="gene_id", values="ed_dm_scale")
+    # restrict to genes with full coverage, try this with the inverse: keep only brain regions with full coverage
+    if keep_all_genes:
+        print("Keeping all genes, brain regions will be lost")
+        lost_data = exp.index[np.logical_not(np.sum(exp.isna(),axis=1) == 0)]
+        exp = exp[(np.sum(exp.isna(),axis=1) == 0)]
+    else:
+        print("Keep all brain regions, genes will be lost")
+        lost_data = exp.columns[np.logical_not(np.sum(exp.T.isna(),axis=1) == 0)]
+        exp = exp.T[(np.sum(exp.T.isna(),axis=1) == 0)].T
     exp_idx = exp.index
     exp_idx_rep = np.repeat(exp_idx, 2) + np.tile(["-L","-R"], exp.shape[0])
     exp_col = exp.columns
     exp_rep = pd.DataFrame(np.repeat(exp.values,2,axis=0))
     exp_rep.index = exp_idx_rep
     exp_rep.columns = exp_col
-    return exp
+
+    return exp, lost_data
 
 
 def get_dist_to_pl(pl_proj):
@@ -277,10 +287,24 @@ def main():
     pl_proj = get_centroids(pl_proj, rsp, name_map)
     pl_proj = get_dist_to_pl(pl_proj)
     pl_proj.to_csv(pl_proj_path)
-    exp = get_expression_data
-    pl_proj_sub, exp_sub, cfos_lost_regions, expr_lost_regions = match_cfos_to_exp(pl_proj, exp) # why are we missing so many regions (~400)
-    # save pl_proj_sub and exp_sub to folder for import to R
-    # do the bootstrapping in R?
-    pl_proj_sub.to_csv(cfos_for_r_path)
-    exp_sub.to_csv(expr_for_r_path)
-    
+    exp_kept_regions, lost_genes = get_expression_data(exp_path, keep_all_genes=False)
+    exp_kept_genes, lost_regions = get_expression_data(exp_path, keep_all_genes=True)
+    proj_kept_regions, exp_kept_regions, cfos_lost_regions, expr_lost_regions = match_cfos_to_exp(pl_proj, exp_kept_regions) # why are we missing so many regions (~400)
+    proj_kept_genes, exp_kept_genes, cfos_lost_regions, expr_lost_regions = match_cfos_to_exp(pl_proj, exp_kept_genes)
+
+    proj_kept_regions_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\cfos_kept_regions.csv"
+    exp_kept_regions_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expr_kept_regions.csv"
+    lost_genes_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\lost_genes_from_kept_regions.csv"
+
+    proj_kept_genes_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\cfos_kept_genes.csv"
+    exp_kept_genes_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expr_kept_genes.csv"
+    lost_regions_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\lost_regions_from_kept_genes.csv"
+
+
+    proj_kept_regions.to_csv(proj_kept_regions_path)
+    exp_kept_regions.to_csv(exp_kept_regions_path)
+    pd.Series(lost_genes).to_csv(lost_genes_path)
+
+    proj_kept_genes.to_csv(proj_kept_genes_path)
+    exp_kept_genes.to_csv(exp_kept_genes_path)
+    pd.Series(lost_regions).to_csv(lost_regions_path)
