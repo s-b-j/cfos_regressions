@@ -2,12 +2,12 @@ cfos_table_in = readtable("C:\Users\Admin\Dropbox (ListonLab)\shane\python_proje
 
 rsFC_vector = cfos_table_in.effect_size;
 
-expr_table_in = readtable("C:\Users\Admin\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expr_kept_regions.csv");
+expr_mat_in = readmatrix("C:\Users\Admin\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expr_kept_regions.csv");
 
-region_names = expr_table_in.Var1; 
-gene_ids = expr_table_in(1,:);
+region_names = cfos_table_in.acronym_x; 
+gene_ids = expr_mat_in(1,:);
 
-ROI_expression_mat = table2array(expr_table_in(2:end,2:end));
+ROI_expression_mat = expr_mat_in(2:end,2:end));
 
 ROI_expression_mat(2:end,:) = (ROI_expression_mat(2:end,:) - mean(ROI_expression_mat(2:end,:))) ./ std(ROI_expression_mat(2:end,:));
 rsFC_vector = (rsFC_vector - mean(rsFC_vector)) ./ std(rsFC_vector);
@@ -58,12 +58,14 @@ for i = 1:bootstrap_count
     [null_temp_u(i,:),~] = spls(null_ROI_expression_mat,resampled_rsFC_vector,1000,1);
 end
 
+
 %correct gene_loading_weights according to stability
 gene_loading_weights = gene_loading_weights ./ std(null_temp_u,0,1)';
  
 %generate gene ranklist 
 [~,temp_gene_ranks] = sort(gene_loading_weights,'descend');
 gene_LW_ranklist = ROI_expression_mat(1,temp_gene_ranks)';
+gene_LW_ranklist = gene_ids(temp_gene_ranks)';
 gene_LW_ranklist(:,2) = gene_loading_weights(temp_gene_ranks);
 
 end
