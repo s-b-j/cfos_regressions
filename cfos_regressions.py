@@ -212,8 +212,7 @@ def get_expression_data(exp_path, keep_all_genes):
     exp_rep = pd.DataFrame(np.repeat(exp.values,2,axis=0))
     exp_rep.index = exp_idx_rep
     exp_rep.columns = exp_col
-
-    return exp, lost_data
+    return exp_rep, lost_data
 
 
 def get_dist_to_pl(pl_proj):
@@ -233,7 +232,7 @@ def get_dist_to_pl(pl_proj):
 
 def match_cfos_to_exp(pl_proj, exp):
     pl_proj = pl_proj.set_index("acronym_x") # note: should merge on name and acronym so that acronym isn't duplicated
-    if (exp_rep.index.name != "acronym"):
+    if (exp.index.name != "acronym"):
         print("Error: expression data is missing acronym index")
         return ""
     else:
@@ -272,21 +271,24 @@ for i in np.arange(bootstrap_count):
 
 
 def main():
-    mcc, rsp, structure_tree, name_map = get_atlas_data()
-    cfos = get_cfos_data(cfos_path)
-    proj = get_pl_proj(structure_tree, mcc)
-    proj = set_structure_names(structure_tree, proj)
-    if check_for_data(combined_path, "p_val_corrected"):
-        combined = pd.read_csv(combined_path)
+    if check_for_data(pl_proj_path, "dist_to_pl"):
+        pl_proj = pd.read_csv(pl_proj_path)
     else:
-        combined = combine_cfos_and_projections(cfos, proj)
-        combined = append_statistics(combined, combined_path)
-    pl_proj = restrict_to_pl_proj(combined)
-    pl_proj = log_transform(pl_proj)
-    # region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
-    pl_proj = get_centroids(pl_proj, rsp, name_map)
-    pl_proj = get_dist_to_pl(pl_proj)
-    pl_proj.to_csv(pl_proj_path)
+        mcc, rsp, structure_tree, name_map = get_atlas_data()
+        cfos = get_cfos_data(cfos_path)
+        proj = get_pl_proj(structure_tree, mcc)
+        proj = set_structure_names(structure_tree, proj)
+        if check_for_data(combined_path, "p_val_corrected"):
+            combined = pd.read_csv(combined_path)
+        else:
+            combined = combine_cfos_and_projections(cfos, proj)
+            combined = append_statistics(combined, combined_path)
+        pl_proj = restrict_to_pl_proj(combined)
+        pl_proj = log_transform(pl_proj)
+        # region_list, anno25 = get_life_canvas_data(region_list_path, anno25_path)
+        pl_proj = get_centroids(pl_proj, rsp, name_map)
+        pl_proj = get_dist_to_pl(pl_proj)
+        pl_proj.to_csv(pl_proj_path)
     exp_kept_regions, lost_genes = get_expression_data(exp_path, keep_all_genes=False)
     exp_kept_genes, lost_regions = get_expression_data(exp_path, keep_all_genes=True)
     proj_kept_regions, exp_kept_regions, cfos_lost_regions, expr_lost_regions = match_cfos_to_exp(pl_proj, exp_kept_regions) # why are we missing so many regions (~400)
