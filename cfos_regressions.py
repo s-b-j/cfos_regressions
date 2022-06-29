@@ -200,7 +200,7 @@ def get_expression_data():
     exp_rep = pd.DataFrame(np.repeat(exp.values,2,axis=0))
     exp_rep.index = exp_idx_rep
     exp_rep.columns = exp_col
-    return exp_rep
+    return exp
 
 
 def get_dist_to_pl(pl_proj):
@@ -218,6 +218,22 @@ def get_dist_to_pl(pl_proj):
     return pl_proj
 
 
+def match_cfos_to_exp(pl_proj, exp):
+    pl_proj = pl_proj.set_index("acronym_x") # note: should merge on name and acronym so that acronym isn't duplicated
+    if (exp_rep.index.name != "acronym"):
+        print("Error: expression data is missing acronym index")
+        return ""
+    else:
+        pl_proj_sub = pl_proj[pl_proj.index.isin(exp.index)]
+        exp_sub = exp[exp.index.isin(pl_proj_sub.index)]
+        pl_proj_lost_regions = pl_proj.index[np.logical_not(pl_proj.index.isin(exp.index))]
+        exp_lost_regions = exp.index[np.logical_not(exp.index.isin(pl_proj.index))]
+        pl_proj_sub_sort = pl_proj_sub.sort_index()
+        exp_sub_sort = exp_sub.sort_index()
+        print(f"Regions in projection/cfos data missing from expression data: {pl_proj_lost_regions}")
+        print(f"Regions in expression data missing from projection/cfos data: {exp_lost_regions}")
+        return pl_proj_sub_sort, exp_sub_sort, pl_proj_lost_regions, exp_lost_regions
+
 # Plan: generate random permutation matrix.
 # Alex creates a range of values to permute over.
 # The values range over the number of data rows in the expression matrix
@@ -226,6 +242,10 @@ temp_range = exp.shape[0]
 perm_mat_rand = np.zeros((exp.shape[0],bootstrap_count))
 for i in np.arange(bootstrap_count):
     perm_mat_rand[:,i] = np.random.permutation(temp_range)
+
+
+
+
 
 # null model using random permutation of rows
 for i in np.arange(bootstrap_count):
@@ -253,4 +273,5 @@ def main():
     pl_proj = get_centroids(pl_proj, rsp, name_map)
     pl_proj = get_dist_to_pl(pl_proj)
     pl_proj.to_csv(pl_proj_path)
-
+    pl_proj_sub, exp_sub, cfos_lost_regions, expr_lost_regions = match_cfos_to_exp(pl_proj, exp) # why are we missing so many regions (~400)
+    
