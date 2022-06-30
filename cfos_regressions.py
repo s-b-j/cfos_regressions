@@ -316,5 +316,23 @@ def main():
     gene_list = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression.csv")
     gene_rank_list = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\ranked_gene_list_noLW.csv")
     gene_id_symbol_dict = gene_list.set_index("gene_id")["gene_symbol"].to_dict()
+    gene_symb_name_dict = gene_list.set_index("gene_symbol")["gene_name"].to_dict()
     gene_rank_list["gene_symbol"] = gene_rank_list["gene_id"].map(gene_id_symbol_dict)
     gene_rank_list.to_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\ranked_gene_list_symbol_noLW.csv")
+
+    # described top loading
+    all_genes_ranked_id_lw = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\kept_all_genes_matlab_gene_LW_ranklist.csv")
+    all_genes_ranked_id_lw["gene_symbol"] = all_genes_ranked_id_lw["gene_id"].map(gene_id_symbol_dict)
+    all_genes_ranked_id_lw["gene_name"] = all_genes_ranked_id_lw["gene_symbol"].map(gene_symb_name_dict)
+    all_genes_ranked_id_lw.to_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\kept_all_genes_matlab_gene_LW_ranklist.csv")
+    # all_genes_ranked_symbol = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\kept_all_genes_ranked_gene_symbol.csv")
+    # all_genes_ranked_symbol["gene_name"] = all_genes_ranked_symbol["gene_symbol"].map(gene_symb_name_dict)
+
+    # cfos within group correlations
+
+    cfos = pd.read_csv(pl_proj_path)
+    cfos.set_index("name", inplace=True)
+    yfp_animal_corr = cfos[['YFP_SJ0601', 'YFP_SJ0604', 'YFP_SJ0606', 'YFP_SJ0610', 'YFP_SJ0613', 'YFP_SJ0615']].corr()
+    chr2_animal_corr = cfos[['ChR2_SJ0619', 'ChR2_SJ0602', 'ChR2_SJ0603', 'ChR2_SJ0605', 'ChR2_SJ0612']].corr()
+    yfp_region_corr = cfos[['YFP_SJ0601', 'YFP_SJ0604', 'YFP_SJ0606', 'YFP_SJ0610', 'YFP_SJ0613', 'YFP_SJ0615']].T.corr()
+    chr2_region_corr = cfos[['ChR2_SJ0619', 'ChR2_SJ0602', 'ChR2_SJ0603', 'ChR2_SJ0605', 'ChR2_SJ0612']].T.corr()
