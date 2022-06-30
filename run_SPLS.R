@@ -27,5 +27,11 @@ for (i in 1:num_rows){
 
 # null model using random permutations
 for (i in 1:num_bootstraps){
-  mdl <- spls(x=expr_mat, y=cfos$effect_size_scale[perm_mat_rand[,i]], K=1, eta=0.7, select="pls2", fit="simpls", scale.x=FALSE, scale.y=FALSE, eps=1e-4, maxstep=100, trace=FALSE)
+  mdl <- spls(x=expr_mat, y=cfos$effect_size_scale[perm_mat_rand[,i]], K=2, eta=0.7, select="pls2", fit="simpls", scale.x=FALSE, scale.y=FALSE, eps=1e-4, maxstep=100, trace=FALSE)
 }
+
+test <- spls(x=expr_mat, y=cfos$effect_size_scale, K=2, eta=0.7, select="pls2", fit="simpls", scale.x=FALSE, scale.y=FALSE, eps=1e-4, maxstep=100, trace=FALSE)
+coef_test <- coef(test)
+
+
+

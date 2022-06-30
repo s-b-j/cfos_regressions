@@ -25,6 +25,7 @@ exp_rep_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_re
 expr_for_r_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expression_for_r.csv"
 cfos_for_r_path = r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\cfos_for_r.csv"
 
+
 def get_atlas_data():
     mcc = MouseConnectivityCache(manifest_file='connectivity/mouse_connectivity_manifest.json')
     reference_space_key = 'annotation/ccf_2017'
@@ -310,3 +311,10 @@ def main():
     proj_kept_genes.to_csv(proj_kept_genes_path)
     exp_kept_genes.to_csv(exp_kept_genes_path)
     pd.Series(lost_regions).to_csv(lost_regions_path)
+
+    # map gene symbol onto gene id
+    gene_list = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression.csv")
+    gene_rank_list = pd.read_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\ranked_gene_list_noLW.csv")
+    gene_id_symbol_dict = gene_list.set_index("gene_id")["gene_symbol"].to_dict()
+    gene_rank_list["gene_symbol"] = gene_rank_list["gene_id"].map(gene_id_symbol_dict)
+    gene_rank_list.to_csv(r"C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\ranked_gene_list_symbol_noLW.csv")

@@ -1,13 +1,13 @@
-cfos_table_in = readtable("C:\Users\Admin\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\cfos_kept_regions.csv");
+cfos_table_in = readtable("C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\cfos_kept_genes.csv");
 
 rsFC_vector = cfos_table_in.effect_size;
 
-expr_mat_in = readmatrix("C:\Users\Admin\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expr_kept_regions.csv");
+expr_mat_in = readmatrix("C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\cfos_regressions\results\expr_kept_genes.csv");
 
 region_names = cfos_table_in.acronym_x; 
 gene_ids = expr_mat_in(1,:);
 
-ROI_expression_mat = expr_mat_in(2:end,2:end));
+ROI_expression_mat = expr_mat_in(2:end,2:end);
 
 ROI_expression_mat(2:end,:) = (ROI_expression_mat(2:end,:) - mean(ROI_expression_mat(2:end,:))) ./ std(ROI_expression_mat(2:end,:));
 rsFC_vector = (rsFC_vector - mean(rsFC_vector)) ./ std(rsFC_vector);
@@ -68,4 +68,23 @@ gene_LW_ranklist = ROI_expression_mat(1,temp_gene_ranks)';
 gene_LW_ranklist = gene_ids(temp_gene_ranks)';
 gene_LW_ranklist(:,2) = gene_loading_weights(temp_gene_ranks);
 
+gene_LW_ranklist = rmmissing(gene_LW_ranklist);
+gene_table = readtable("C:\Users\shane\Dropbox (ListonLab)\shane\python_projects\pls_regression\data\structure_unionizes_all_mouse_expression.csv");
+
+gene_table = gene_table(:,2:3);
+
+gene_table = rmmissing(gene_table);
+gene_table = unique(gene_table,'rows');
+
+gene_map = containers.Map(gene_table.gene_id, gene_table.gene_symbol);
+
+gene_ids_ranked = gene_LW_ranklist(:,1);
+
+final_idx = size(gene_ids_ranked,1);
+
+list_out = [""];
+
+for i = 1:final_idx
+    list_out = [list_out; gene_map(gene_ids_ranked(i))];
 end
+
